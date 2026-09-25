@@ -113,6 +113,16 @@ does not replace WoL. Once the Deck suspends, its Tailscale daemon and network
 stack are suspended as well. To wake it remotely, an awake device on the
 Deck's physical LAN must send the wired magic packet.
 
+### Battery charge limit
+
+Because `deck-awake` may leave the Deck running on external power for extended
+periods, the Deck used to develop this project has its battery charge limit set
+to 80% as a precaution. This was configured through Gaming Mode under
+**Settings → Power → Battery Charge Limit**.
+
+The charge limit is optional and is managed by SteamOS. `deck-awake` does not
+read or change battery-charging settings.
+
 ### Enable wired Wake-on-LAN
 
 Find the active wired connection and its MAC address:
