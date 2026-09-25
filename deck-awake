@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+readonly unit="deck-awake.service"
+
+usage() {
+    cat <<'EOF'
+Usage:
+  deck-awake [DURATION]  Prevent suspend for a duration (default: 2h)
+  deck-awake on          Prevent suspend until explicitly stopped
+  deck-awake off         Restore normal suspend behavior
+  deck-awake status      Show whether the inhibitor is active
+
+Examples:
+  deck-awake
+  deck-awake 45m
+  deck-awake 3h
+  deck-awake on
+  deck-awake off
+EOF
+}
+
+power_button_devices() {
+    local event_device name
+
+    for event_device in /dev/input/event*; do
+        [[ -r "${event_device}" ]] || continue
+        name="$(cat "/sys/class/input/${event_device##*/}/device/name" 2>/dev/null || true)"
+        [[ "${name}" == "Power Button" ]] && printf '%s\n' "${event_device}"
+    done
+
+    return 0
+}
+
+check_requirements() {
+    local command_name button_devices
+
+    for command_name in systemctl systemd-run systemd-inhibit evtest stdbuf readlink sleep; do
+        command -v "${command_name}" >/dev/null 2>&1 || {
+            echo "Required command not found: ${command_name}" >&2
+            return 1
+        }
+    done
+
+    button_devices="$(power_button_devices)"
+    if [[ -z "${button_devices}" ]]; then
+        echo "No readable ACPI power-button input device was found." >&2
+        echo "Refusing to inhibit sleep because manual suspend could become unavailable." >&2
+        return 1
+    fi
+}
+
+validate_duration() {
+    [[ "$1" =~ ^[0-9]+([.][0-9]+)?[smhd]?$ ]] || {
+        echo "Invalid duration: $1" >&2
+        echo "Use a value such as 30m, 2h, or 1d." >&2
+        return 1
+    }
+}
+
+start_inhibitor() {
+    local duration="$1" self_path
+
+    [[ "${duration}" == "infinity" ]] || validate_duration "${duration}"
+    check_requirements
+    self_path="$(readlink -f "$0")"
+
+    systemctl --user stop "${unit}" 2>/dev/null || true
+    systemd-run --user \
+        --unit="${unit%.service}" \
+        --collect \
+        --description="Temporarily prevent Steam Deck suspend" \
+        "${self_path}" hold "${duration}"
+
+    if [[ "${duration}" == "infinity" ]]; then
+        echo "Suspend blocked until: deck-awake off"
+    else
+        echo "Suspend blocked for ${duration}. Stop early with: deck-awake off"
+    fi
+}
+
+watch_power_button() {
+    local event_device
+
+    while IFS= read -r event_device; do
+        stdbuf -oL evtest "${event_device}" 2>/dev/null |
+            while IFS= read -r line; do
+                if [[ "${line}" == *"KEY_POWER"*"value 1"* ]]; then
+                    systemctl --user --no-block stop "${unit}"
+                    exit 0
+                fi
+            done &
+    done < <(power_button_devices)
+
+    wait
+}
+
+hold_inhibitor() {
+    local duration="$1" watcher_pid
+
+    check_requirements
+    watch_power_button &
+    watcher_pid=$!
+    trap 'kill "${watcher_pid}" 2>/dev/null || true' EXIT
+
+    systemd-inhibit \
+        --what=sleep \
+        --mode=block \
+        --who=deck-awake \
+        --why="Long-running task" \
+        /usr/bin/sleep "${duration}"
+}
+
+show_status() {
+    if systemctl --user is-active --quiet "${unit}"; then
+        systemctl --user --no-pager status "${unit}"
+    else
+        echo "Suspend inhibitor is not active."
+    fi
+}
+
+case "${1:-2h}" in
+    on) start_inhibitor infinity ;;
+    off)
+        systemctl --user stop "${unit}" 2>/dev/null || true
+        echo "Normal suspend behavior restored."
+        ;;
+    status) show_status ;;
+    hold) hold_inhibitor "${2:?missing duration}" ;;
+    -h|--help|help) usage ;;
+    *) start_inhibitor "$1" ;;
+esac
