@@ -4,6 +4,8 @@
 suspend during long-running downloads, transfers, builds, backups, or remote
 sessions.
 
+Current version: **0.1.0**
+
 It is designed for SteamOS Gaming Mode:
 
 - The screen may dim or turn off normally.
@@ -65,6 +67,7 @@ examples below or add that directory to `PATH`.
 ~/.local/bin/deck-awake on       # prevent suspend until stopped
 ~/.local/bin/deck-awake status   # show the transient service
 ~/.local/bin/deck-awake off      # restore normal suspend immediately
+~/.local/bin/deck-awake --version
 ```
 
 Durations accept a number with an optional `s`, `m`, `h`, or `d` suffix.
@@ -206,6 +209,17 @@ This project intentionally does not permanently disable Steam's idle timeout,
 install a boot service, configure battery charging limits, or enable WoL
 automatically. Those policies are machine- and network-specific; the README
 documents WoL so remote users can configure and test it deliberately.
+
+## Versioning and development
+
+Published versions are marked with Git tags and recorded in
+[CHANGELOG.md](CHANGELOG.md). The project uses semantic versioning while the
+command-line interface develops; `0.x` releases may still change behavior.
+
+Development happens on `main`. Feature branches will be created only for
+changes that are actively being worked on, rather than maintaining speculative
+roadmap branches. Suggestions and real-world test results are welcome through
+GitHub issues.
 
 ## License
 

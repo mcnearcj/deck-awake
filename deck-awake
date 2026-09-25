@@ -3,6 +3,7 @@
 set -euo pipefail
 
 readonly unit="deck-awake.service"
+readonly version="0.1.0"
 
 usage() {
     cat <<'EOF'
@@ -11,6 +12,7 @@ Usage:
   deck-awake on          Prevent suspend until explicitly stopped
   deck-awake off         Restore normal suspend behavior
   deck-awake status      Show whether the inhibitor is active
+  deck-awake --version   Show the installed version
 
 Examples:
   deck-awake
@@ -128,6 +130,7 @@ case "${1:-2h}" in
         ;;
     status) show_status ;;
     hold) hold_inhibitor "${2:?missing duration}" ;;
+    -V|--version) printf 'deck-awake %s\n' "${version}" ;;
     -h|--help|help) usage ;;
     *) start_inhibitor "$1" ;;
 esac
