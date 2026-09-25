@@ -85,8 +85,11 @@ Before relying on remote wake:
 
 1. Keep physical access to the Deck while testing. If WoL fails, the physical
    power button is the recovery path.
-2. Prefer wired Ethernet through a powered dock. Wake-on-Wi-Fi depends on the
-   radio, access point, firmware, and driver and is generally less reliable.
+2. Prefer wired Ethernet through a powered dock. On the Deck used to develop
+   this project, the Wi-Fi adapter advertised magic-packet Wake-on-WLAN support,
+   but Wake-on-Wi-Fi did not work in testing. Wired WoL through the dock did.
+   Wake-on-Wi-Fi depends on the radio, access point, firmware, and driver, so
+   results may differ on other hardware and networks.
 3. Ensure the dock and Ethernet cable remain connected and powered during
    suspend.
 4. Send the magic packet from the same physical LAN, or from an always-on device
@@ -96,6 +99,19 @@ The sleeping Deck cannot receive a wake request through its own Tailscale
 client because that client is suspended too. Magic packets are normally local
 broadcast traffic and are not routed across the internet. Remote wake therefore
 requires an awake relay inside the physical network or router support for WoL.
+
+### Tailscale access
+
+For an update-resistant Tailscale installation on SteamOS, see
+[`tailscale-dev/deck-tailscale`](https://github.com/tailscale-dev/deck-tailscale).
+That is the installer used on the Deck where this project was developed. It
+installs Tailscale under `/opt/tailscale`, configures its systemd service, and
+can enable Tailscale SSH.
+
+Tailscale provides convenient remote access while the Deck is awake, but it
+does not replace WoL. Once the Deck suspends, its Tailscale daemon and network
+stack are suspended as well. To wake it remotely, an awake device on the
+Deck's physical LAN must send the wired magic packet.
 
 ### Enable wired Wake-on-LAN
 
